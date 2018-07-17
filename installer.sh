@@ -1,9 +1,9 @@
-sudo apt-get -y install libpng12-dev
+sudo apt-get install -y libjpeg62-turbo-dev
 cd ~
-git clone https://github.com/AndrewFromMelbourne/raspi2png.git
-cd raspi2png
+git clone https://github.com/andersonbr/raspi2jpeg.git
+cd raspi2jpeg
 make
 sudo make install
 cd ..
-rm -fr raspi2png
-raspi2png -H
+rm -fr raspi2jpeg
+raspi2jpeg -H
