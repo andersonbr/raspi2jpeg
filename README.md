@@ -1,13 +1,13 @@
-# raspi2png
+# raspi2jpeg
 
-Utility to take a snapshot of the raspberry pi screen and save it as a PNG file
+Utility to take a snapshot of the raspberry pi screen and save it as a JPEG file
 
-    Usage: raspi2png [--pngname name] [--width <width>] [--height <height>] [--compression <level>] [--delay <delay>] [--display <number>] [--stdout] [--help]
+    Usage: raspi2jpeg [--jpegname name] [--width <width>] [--height <height>] [--compression <level>] [--delay <delay>] [--display <number>] [--stdout] [--help]
 
-    --pngname,-p - name of png file to create (default is snapshot.png)
+    --jpegname,-j - name of JPEG file to create (default is snapshot.jpg)
     --height,-h - image height (default is screen height)
     --width,-w - image width (default is screen width)
-    --compression,-c - PNG compression level (0 - 9)
+    --compression,-c - JPEG compression level (0 - 9)
     --delay,-d - delay in seconds (default 0)
     --display,-D - Raspberry Pi display number (default 0)
 	--stdout,-s - write file to stdout
@@ -23,7 +23,7 @@ curl -sL https://raw.githubusercontent.com/AndrewFromMelbourne/raspi2png/master/
 
 You will need to install libpng before you build the program. On Raspbian
 
-sudo apt-get install libpng12-dev
+sudo apt-get install -y libjpeg62-turbo-dev
 
-Then just type 'make' in the raspi2png directory you cloned from github.
+Then just type 'make' in the raspi2jpeg directory you cloned from github.
 
