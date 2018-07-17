@@ -1,9 +1,9 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: raspi2png
-Source: https://github.com/AndrewFromMelbourne/raspi2png/
+Upstream-Name: raspi2jpeg
+Source: https://github.com/andersonbr/raspi2jpeg/
 
 Files: *
-Copyright: 2014-2016 Andrew Duncan
+Copyright: 2018 Anderson Calixto
 License: MIT
  Permission is hereby granted, free of charge, to any person obtaining a
  copy of this software and associated documentation files (the "Software"),
@@ -24,7 +24,7 @@ License: MIT
  DEALINGS IN THE SOFTWARE.
 
 Files: debian/*
-Copyright: 2016 Przemyslaw Wegrzyn <pwegrzyn@codepainters.com>
+Copyright: 2018 Anderson Calixto <andersonbr@gmail.com>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
