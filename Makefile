@@ -1,8 +1,8 @@
 OBJS=raspi2jpeg.o
 BIN=raspi2jpeg
 
-CFLAGS+=-Wall -g -O3 $(pkg-config --cflags libjpeg)
-LDFLAGS+=-L/opt/vc/lib/ -lbcm_host $(pkg-config --libs libjpeg) -lm
+CFLAGS+=-Wall -g -O3 $(shell pkg-config --cflags libjpeg)
+LDFLAGS+=-L/opt/vc/lib/ -lbcm_host $(shell pkg-config --libs libjpeg) -lm
 
 INCLUDES+=-I/opt/vc/include/ -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux
 

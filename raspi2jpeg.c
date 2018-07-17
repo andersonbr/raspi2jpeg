@@ -29,7 +29,6 @@
 
 #include <getopt.h>
 #include <math.h>
-#include <png.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +37,10 @@
 #include <zlib.h>
 
 #include "bcm_host.h"
+
+// JPEG
+#include <jpeglib.h>
+#include <setjmp.h>
 
 //-----------------------------------------------------------------------
 
@@ -49,7 +52,8 @@
 
 #define DEFAULT_DELAY 0
 #define DEFAULT_DISPLAY_NUMBER 0
-#define DEFAULT_NAME "snapshot.png"
+#define DEFAULT_NAME "snapshot.jpg"
+#define DEFAULT_COMPRESSION (0.75)
 
 //-----------------------------------------------------------------------
 
@@ -60,7 +64,7 @@ const char* program = NULL;
 void
 usage(void)
 {
-    fprintf(stderr, "Usage: %s [--pngname name]", program);
+    fprintf(stderr, "Usage: %s [--jpegname name]", program);
     fprintf(stderr, " [--width <width>] [--height <height>]");
     fprintf(stderr, " [--compression <level>]");
     fprintf(stderr, " [--delay <delay>] [--display <number>]");
@@ -68,7 +72,7 @@ usage(void)
 
     fprintf(stderr, "\n");
 
-    fprintf(stderr, "    --pngname,-p - name of png file to create ");
+    fprintf(stderr, "    --jpegname,-j - name of jpeg file to create ");
     fprintf(stderr, "(default is %s)\n", DEFAULT_NAME);
 
     fprintf(stderr, "    --height,-h - image height ");
@@ -77,8 +81,8 @@ usage(void)
     fprintf(stderr, "    --width,-w - image width ");
     fprintf(stderr, "(default is screen width)\n");
 
-    fprintf(stderr, "    --compression,-c - PNG compression level ");
-    fprintf(stderr, "(0 - 9)\n");
+    fprintf(stderr, "    --compression,-c - JPEG compression level ");
+    fprintf(stderr, "[0.0 - 1.0]. (default is %.2f) \n", DEFAULT_COMPRESSION);
 
     fprintf(stderr, "    --delay,-d - delay in seconds ");
     fprintf(stderr, "(default %d)\n", DEFAULT_DELAY);
@@ -104,11 +108,11 @@ main(
     int opt = 0;
 
     bool writeToStdout = false;
-    char *pngName = DEFAULT_NAME;
+    char *jpegName = DEFAULT_NAME;
     int32_t requestedWidth = 0;
     int32_t requestedHeight = 0;
     uint32_t displayNumber = DEFAULT_DISPLAY_NUMBER;
-    int compression = Z_DEFAULT_COMPRESSION;
+    float compression = DEFAULT_COMPRESSION;
     int delay = DEFAULT_DELAY;
 
     VC_IMAGE_TYPE_T imageType = VC_IMAGE_RGBA32;
@@ -120,7 +124,7 @@ main(
 
     //-------------------------------------------------------------------
 
-    char *sopts = "c:d:D:Hh:p:w:s";
+    char *sopts = "c:d:D:Hh:j:w:s";
 
     struct option lopts[] =
     {
@@ -129,7 +133,7 @@ main(
         { "display", required_argument, NULL, 'D' },
         { "height", required_argument, NULL, 'h' },
         { "help", no_argument, NULL, 'H' },
-        { "pngname", required_argument, NULL, 'p' },
+        { "jpegname", required_argument, NULL, 'j' },
         { "width", required_argument, NULL, 'w' },
         { "stdout", no_argument, NULL, 's' },
         { NULL, no_argument, NULL, 0 }
@@ -141,11 +145,11 @@ main(
         {
         case 'c':
 
-            compression = atoi(optarg);
+            compression = atof(optarg);
 
-            if ((compression < 0) || (compression > 9))
+            if ((compression < 0) || (compression > 1))
             {
-                compression = Z_DEFAULT_COMPRESSION;
+                compression = DEFAULT_COMPRESSION;
             }
 
             break;
@@ -165,9 +169,9 @@ main(
             requestedHeight = atoi(optarg);
             break;
 
-        case 'p':
+        case 'j':
 
-            pngName = optarg;
+            jpegName = optarg;
             break;
 
         case 'w':
@@ -249,32 +253,32 @@ main(
         exit(EXIT_FAILURE);
     }
 
-    int32_t pngWidth = modeInfo.width;
-    int32_t pngHeight = modeInfo.height;
+    int32_t jpegWidth = modeInfo.width;
+    int32_t jpegHeight = modeInfo.height;
 
     if (requestedWidth > 0)
     {
-        pngWidth = requestedWidth;
+        jpegWidth = requestedWidth;
 
         if (requestedHeight == 0)
         {
             double numerator = modeInfo.height * requestedWidth;
             double denominator = modeInfo.width;
 
-            pngHeight = (int32_t)ceil(numerator / denominator);
+            jpegHeight = (int32_t)ceil(numerator / denominator);
         }
     }
 
     if (requestedHeight > 0)
     {
-        pngHeight = requestedHeight;
+        jpegHeight = requestedHeight;
 
         if (requestedWidth == 0)
         {
             double numerator = modeInfo.width * requestedHeight;
             double denominator = modeInfo.height;
 
-            pngWidth = (int32_t)ceil(numerator / denominator);
+            jpegWidth = (int32_t)ceil(numerator / denominator);
         }
     }
 
@@ -283,13 +287,13 @@ main(
     // If the display is rotated either 90 or 270 degrees (value 1 or 3)
     // the width and height need to be transposed.
 
-    int32_t dmxWidth = pngWidth;
-    int32_t dmxHeight = pngHeight;
+    int32_t dmxWidth = jpegWidth;
+    int32_t dmxHeight = jpegHeight;
 
     if (displayRotated & 1)
     {
-        dmxWidth = pngHeight;
-        dmxHeight = pngWidth;
+        dmxWidth = jpegHeight;
+        dmxHeight = jpegWidth;
     }
 
     int32_t dmxPitch = dmxBytesPerPixel * ALIGN_TO_16(dmxWidth);
@@ -360,12 +364,12 @@ main(
     //-------------------------------------------------------------------
     // Convert from RGBA (32 bit) to RGB (24 bit)
 
-    int8_t pngBytesPerPixel = 3;
-    int32_t pngPitch = pngBytesPerPixel * pngWidth;
-    void *pngImagePtr = malloc(pngPitch * pngHeight);
+    int8_t jpegBytesPerPixel = 3;
+    int32_t jpegPitch = jpegBytesPerPixel * jpegWidth;
+    void *jpegImagePtr = malloc(jpegPitch * jpegHeight);
 
     int32_t j = 0;
-    for (j = 0 ; j < pngHeight ; j++)
+    for (j = 0 ; j < jpegHeight ; j++)
     {
         int32_t dmxXoffset = 0;
         int32_t dmxYoffset = 0;
@@ -427,11 +431,11 @@ main(
         }
 
         int32_t i = 0;
-        for (i = 0 ; i < pngWidth ; i++)
+        for (i = 0 ; i < jpegWidth ; i++)
         {
-            uint8_t *pngPixelPtr = pngImagePtr
-                                 + (i * pngBytesPerPixel)
-                                 + (j * pngPitch);
+            uint8_t *jpegPixelPtr = jpegImagePtr
+                                 + (i * jpegBytesPerPixel)
+                                 + (j * jpegPitch);
 
             switch (displayRotated & 3)
             {
@@ -490,7 +494,7 @@ main(
 
             uint8_t *dmxPixelPtr = dmxImagePtr + dmxXoffset + dmxYoffset;
 
-            memcpy(pngPixelPtr, dmxPixelPtr, 3);
+            memcpy(jpegPixelPtr, dmxPixelPtr, 3);
         }
     }
 
@@ -498,98 +502,58 @@ main(
     dmxImagePtr = NULL;
 
     //-------------------------------------------------------------------
+    struct jpeg_compress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    JSAMPROW row_pointer[1];
+    int row_stride;
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_compress(&cinfo);
 
-    png_structp pngPtr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-                                                 NULL,
-                                                 NULL,
-                                                 NULL);
-
-    if (pngPtr == NULL)
-    {
-        fprintf(stderr,
-                "%s: unable to allocated PNG write structure\n",
-                program);
-
-        exit(EXIT_FAILURE);
-    }
-
-    png_infop infoPtr = png_create_info_struct(pngPtr);
-
-    if (infoPtr == NULL)
-    {
-        fprintf(stderr,
-                "%s: unable to allocated PNG info structure\n",
-                program);
-
-        exit(EXIT_FAILURE);
-    }
-
-    if (setjmp(png_jmpbuf(pngPtr)))
-    {
-        fprintf(stderr, "%s: unable to create PNG\n", program);
-        exit(EXIT_FAILURE);
-    }
-
-    FILE *pngfp = NULL;
+    ///// OUTPUT FILE / STDOUT
+    FILE *outfp = NULL;
 
     if (writeToStdout)
     {
-        pngfp = stdout;
+        outfp = stdout;
     }
     else
     {
-        pngfp = fopen(pngName, "wb");
+        outfp = fopen(jpegName, "wb");
 
-        if (pngfp == NULL)
+        if (outfp == NULL)
         {
             fprintf(stderr,
                     "%s: unable to create %s - %s\n",
                     program,
-                    pngName,
+                    jpegName,
                     strerror(errno));
 
             exit(EXIT_FAILURE);
         }
     }
-
-    png_init_io(pngPtr, pngfp);
-
-    png_set_IHDR(
-        pngPtr,
-        infoPtr,
-        pngWidth,
-        pngHeight,
-        8,
-        PNG_COLOR_TYPE_RGB,
-        PNG_INTERLACE_NONE,
-        PNG_COMPRESSION_TYPE_BASE,
-        PNG_FILTER_TYPE_BASE);
-
-    if (compression != Z_DEFAULT_COMPRESSION)
-    {
-        png_set_compression_level(pngPtr, compression);
+    jpeg_stdio_dest(&cinfo, outfp);
+    cinfo.image_width = jpegWidth;
+    cinfo.image_height = jpegHeight;
+    cinfo.input_components = 3;
+    cinfo.in_color_space = JCS_RGB;
+    jpeg_set_defaults(&cinfo);
+    jpeg_set_quality(&cinfo, (int)(compression * 100), TRUE);
+    jpeg_start_compress(&cinfo, TRUE);
+    row_stride = jpegWidth * 3;
+    while (cinfo.next_scanline < cinfo.image_height) {
+        row_pointer[0] = jpegImagePtr + (cinfo.next_scanline * row_stride); 
+        (void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
     }
-
-    png_write_info(pngPtr, infoPtr);
-
-    int y = 0;
-    for (y = 0; y < pngHeight; y++)
+    jpeg_finish_compress(&cinfo);
+    if (outfp != stdout)
     {
-        png_write_row(pngPtr, pngImagePtr + (pngPitch * y));
-    }
-
-    png_write_end(pngPtr, NULL);
-    png_destroy_write_struct(&pngPtr, &infoPtr);
-
-    if (pngfp != stdout)
-    {
-        fclose(pngfp);
+        fclose(outfp);
     }
 
     //-------------------------------------------------------------------
 
-    free(pngImagePtr);
-    pngImagePtr = NULL;
+    free(jpegImagePtr);
+    jpegImagePtr = NULL;
 
     return 0;
 }
