@@ -1,6 +1,7 @@
 # raspi2jpeg
 
 Utility to take a snapshot of the raspberry pi screen and save it as a JPEG file.
+
 Based on raspi2png (https://github.com/AndrewFromMelbourne/raspi2png) utility.
 
     Usage: raspi2jpeg [--jpegname name] [--width <width>] [--height <height>] [--compression <level>] [--delay <delay>] [--display <number>] [--stdout] [--help]
