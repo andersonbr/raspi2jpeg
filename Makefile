@@ -1,5 +1,5 @@
-OBJS=raspi2png.o
-BIN=raspi2png
+OBJS=raspi2jpeg.o
+BIN=raspi2jpeg
 
 CFLAGS+=-Wall -g -O3 $(pkg-config --cflags libjpeg)
 LDFLAGS+=-L/opt/vc/lib/ -lbcm_host $(pkg-config --libs libjpeg) -lm
@@ -10,7 +10,7 @@ all: $(BIN)
 
 install: $(BIN)
 	install -d -m 755 $(DESTDIR)/usr/bin/
-	install -m 755 $(BIN) $(DESTDIR)/usr/bin/raspi2png
+	install -m 755 $(BIN) $(DESTDIR)/usr/bin/raspi2jpeg
 
 %.o: %.c
 	@rm -f $@ 
