@@ -17,11 +17,11 @@ Utility to take a snapshot of the raspberry pi screen and save it as a JPEG file
 
 Run this command through terminal or CLI screen.
 
-curl -sL https://raw.githubusercontent.com/AndrewFromMelbourne/raspi2png/master/installer.sh | bash -
+curl -sL https://raw.githubusercontent.com/andersonbr/raspi2jpeg/master/installer.sh | bash -
 
 ## Manual Building
 
-You will need to install libpng before you build the program. On Raspbian
+You will need to install libjpeg62-turbo-dev before you build the program. On Raspbian
 
 sudo apt-get install -y libjpeg62-turbo-dev
 
